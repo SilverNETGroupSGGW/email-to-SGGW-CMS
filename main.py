@@ -1,4 +1,3 @@
-from ast import List
 from classes import Lesson, Schedule
 import email_client
 

@@ -1,4 +1,3 @@
-import email
 from classes import EmailMessage
 from imapclient import IMAPClient
 

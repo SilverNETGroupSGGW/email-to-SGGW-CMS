@@ -1,6 +1,4 @@
-
 from io import BytesIO
-from math import e
 from typing import List # For type hinting
 
 class File:
