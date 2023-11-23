@@ -1,0 +1,147 @@
+﻿10.10.2023 22:34
+WZIM, 2023, Jesień , ST, Inf, inż, R4, S7, gr1, ISI-1 ;
+------------------------------------------------
+ZJ_01
+Sztuczna Inteligencja [Lab]
+d1, 10:30-12:00
+3/18
+Aleksandra Konopka
+U: 8 tygodni (ostatnie zajęcia 45 minut krócej)
+------------------------------------------------
+ZJ_02
+Komunikacja międzykulturowa [w]
+d1, 12:15-13:45
+3/82
+Agnieszka Kampka
+U:
+------------------------------------------------
+ZJ_03
+Projektowanie gier komputerowych [Faq]
+d3, 8:00-9:30
+3/31
+Izabella Antoniuk
+U:
+------------------------------------------------
+ZJ_04
+Projektowanie gier komputerowych [Faq]
+d3, 9:45-11:15
+3/31
+Izabella Antoniuk
+U:
+------------------------------------------------
+ZJ_05
+Projektowanie gier komputerowych [Faq]
+d3, 11:30-13:00
+3/31
+Izabella Antoniuk
+U:
+------------------------------------------------
+ZJ_06
+Komercjalizacja wiedzy IT [Faq]
+d3, 11:30-13:00
+3/40
+Dariusz Makowski
+U:
+------------------------------------------------
+ZJ_07
+Python w praktyce - web i deep learning [Faq]
+d3, 13:15-14:45
+3/31
+Oleksandr Fedoruk
+U:
+------------------------------------------------
+ZJ_08
+Modelowanie i animacja przy uzyciu programu Blender [Faq]
+d3, 13:15-14:45
+3/18
+Izabella Antoniuk
+U:
+------------------------------------------------
+ZJ_09
+Modelowanie i animacja przy uzyciu programu Blender [Faq]
+d3, 15:00-16:30
+3/31
+Izabella Antoniuk
+U:
+------------------------------------------------
+ZJ_10
+Python w praktyce - web i deep learning [Faq]
+d3, 16:45-18:15
+3/31
+Oleksandr Fedoruk
+U:
+------------------------------------------------
+ZJ_11
+Modelowanie procesów biznesowych [Faq]
+d3, 16:45-18:15
+zdalne
+Dariusz Strzęciwilk
+U:
+------------------------------------------------
+ZJ_12
+Python w praktyce - web i deep learning [Faq]
+d3, 18:30-20:00
+3/31
+Oleksandr Fedoruk
+U:
+------------------------------------------------
+ZJ_13
+Statystyka w badaniach ankietowych [Faq]
+d3, 18:30-20:00
+zdalne
+Andrzej Zembrzuski
+U:
+------------------------------------------------
+ZJ_14
+Systemy Handlu Elektronicznego [w]
+d4, 9:15-10:30
+3/40
+Tomasz Woźniakowski
+U: 9 tygodni
+------------------------------------------------
+ZJ_15
+Systemy Business Intelligence [w]
+d4, 10:45-12:00
+3/40
+Tomasz Ząbkowski
+U: 9 tygodni
+------------------------------------------------
+ZJ_16
+Systemy Business Intelligence [Lab]
+d4, 12:15-14:15
+2009, 23
+Tomasz Ząbkowski
+U: 12 tygodni  (ostatnie 2 zajęcia 45 minut krócej)
+------------------------------------------------
+ZJ_17
+Systemy Handlu Elektronicznego [Lab]
+d4, 14:30-15:45
+2066, 23
+Tomasz Woźniakowski
+U: 9 tygodni
+------------------------------------------------
+ZJ_18
+Seminarium Dyplomowe [cw]
+d4, 17:00-18:30
+3/40
+Arkadiusz Orłowski
+U:
+------------------------------------------------
+ZJ_19
+Sztuczna Inteligencja [w]
+d5, 8:00-9:30
+3/40
+Ryszard Kozera
+U: 7 tygodni
+------------------------------------------------
+ZJ_20
+Sztuczna Inteligencja [w]
+d5, 9:45-11:15
+3/40
+Ryszard Kozera
+U: 8 tygodni
+------------------------------------------------
+end.
+
+
+
