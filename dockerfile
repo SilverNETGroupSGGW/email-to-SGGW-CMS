@@ -1,15 +1,15 @@
 # Use Python 3.11 as base image
-FROM python:3.11.6-slim-buster
+FROM python:3.11-slim
 
 # Get credentials from launch args
 ARG USERNAME
 ARG APP_PASSWORD
-ARG TIMEOUT=120
 
 # Set environment variables
 ENV USERNAME=${USERNAME}
 ENV APP_PASSWORD=${APP_PASSWORD}
 ENV TIMEOUT=${TIMEOUT}
+ENV IMAP_SERVER=${IMAP_SERVER}
 
 # Copy files to container
 COPY . /app
@@ -22,4 +22,4 @@ RUN pip install -r /app/requirements.txt
 WORKDIR /app
 
 # Run app
-CMD ["python", "app.py"]
+CMD ["python", "main.py"]
