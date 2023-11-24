@@ -1,6 +1,7 @@
 from io import BytesIO
 from classes import EmailMessage, Schedule
 import email_client
+import api_client
 
 def processAttachmentsForNLastestEmail(i: int):
 
@@ -42,4 +43,4 @@ def processAttachmentsForNLastestEmail(i: int):
         else:
             print("Unknown file type, skipping...")
 
-processAttachmentsForNLastestEmail(0)
+api_client.deletePlanData()
