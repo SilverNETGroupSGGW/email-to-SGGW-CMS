@@ -269,34 +269,33 @@ class Schedule:
         # Aleksandra Konopka
         # U: 8 tygodni (ostatnie zajęcia 45 minut krócej)
         for block in blocks:
+            lesson = Lesson()
             if block == '' or "ZJ" not in block[0]:
                 continue
             elif "end." in block:
                 break
 
             # Parse text
-            num = block[0].strip()
-            name = block[1].split('[')[0].strip()
-            type = block[1].split('[')[1].split(']')[0].strip()
-            day = block[2].split(',')[0].strip().removeprefix('d').strip()
-            timeStart = block[2].split(',')[1].split('-')[0].strip()
-            timeEnd = block[2].split(',')[1].split('-')[1].strip()
+            lesson.num = int(block[0].strip("ZJ_").strip())
+            lesson.name = block[1].split('[')[0].strip()
+            lesson.type = block[1].split('[')[1].split(']')[0].strip()
+            lesson.dayNumber = int(block[2].split(',')[0].strip().removeprefix('d').strip())
+            lesson.timeStart = block[2].split(',')[1].split('-')[0].strip()
+            lesson.timeEnd = block[2].split(',')[1].split('-')[1].strip()
             if block[3] == "zdalne":
-                room = 0
-                building = 0
+                lesson.location = "0"
+                lesson.building = "0"
             elif block[3].find('/') != -1:
-                room = block[3].split('/')[0].strip()
-                building = block[3].split('/')[1].strip()
+                lesson.location = block[3].split('/')[0].strip()
+                lesson.building = block[3].split('/')[1].strip()
             else:
-                room = block[3].split(',')[0].strip()
-                building = block[3].split(',')[1].strip()
+                lesson.location = block[3].split(',')[0].strip()
+                lesson.building = block[3].split(',')[1].strip()
 
-            building = block[3].split('/')[0].strip()
-            teacher = block[4].strip()
-            comment = block[5].removeprefix('U:').strip()
+            lesson.building = block[3].split('/')[0].strip()
+            lesson.teacher = block[4].strip()
+            lesson.comment = block[5].removeprefix('U:').strip()
 
-            # Create lesson object
-            lesson = Lesson(num=num, name=name, type=type, day=day, timeStart=timeStart, timeEnd=timeEnd, room=str(room), floor=building, building=building, teacher=teacher, comment=comment, created='', updated='')
             # Add lesson to lessons list
             lessons.append(lesson)
         return cls(updateTime, faculty, fieldOfStudent, degree, mode, year, semester, group, lessons)
@@ -318,8 +317,8 @@ class Lesson:
         self.dayNumber = day
         self.timeStart = timeStart
         self.timeEnd = timeEnd
-        self.location = room
-        self.building = building
+        self.location:str = room
+        self.building:str = building
         self.teacher = teacher
         self.comment = comment
 
