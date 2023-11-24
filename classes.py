@@ -1,24 +1,31 @@
 from io import BytesIO
+import io
+from types import CellType
 from typing import List # For type hinting
 
+from io import BytesIO
+from typing import List
+
 class File:
-    def __init__(self, name, content):
+    def __init__(self, name='', content=b''):
         self.name = name
         self.content = content
 
-    def save(self, folder, name = None):
+    def save(self, folder, name=None):
         import os
         if not os.path.isdir(folder):
             os.mkdir(folder)
 
-        with open(folder + '/' + name, 'wb') as f:
+        with open(os.path.join(folder, name or self.name), 'wb') as f:
             f.write(self.content)
 
     def __str__(self):
         return f"Name: {self.name}\nContent: {self.content}"
 
 class EmailMessage:
-    def __init__(self, subject, sender, recipient, date, body, attachments):
+    def __init__(self, subject='', sender='', recipient='', date='', body='', attachments=None):
+        if attachments is None:
+            attachments = []
         self.subject = subject
         self.sender = sender
         self.recipient = recipient
@@ -30,11 +37,20 @@ class EmailMessage:
     def from_raw_email(cls, raw_email):
         def extract_body(parsed_email):
             body = ''
-            for part in parsed_email.walk():
-                body = part.get_payload(decode=True).decode(part.get_content_charset(), 'ignore')
-                break
+            if parsed_email.is_multipart():
+                for part in parsed_email.walk():
+                    ctype = part.get_content_type()
+                    cdispo = str(part.get('Content-Disposition'))
 
+                    # skip any text/plain (txt) attachments
+                    if ctype == 'text/plain' and 'attachment' not in cdispo:
+                        body = part.get_payload(decode=True)
+                        break
+            # not multipart - i.e. plain text, no attachments, keeping fingers crossed
+            else:
+                body = parsed_email.get_payload(decode=True)
             return body
+
 
         def extract_attachments(parsed_email):
             attachments = []
@@ -61,10 +77,8 @@ class EmailMessage:
 
         return cls(subject, sender, recipient, date, body, attachments)
 
-    def save_attachments(self, folder):
-        if len(self.attachments) == 0:
-            return
 
+    def save_attachments(self, folder):
         import os
         if not os.path.isdir(folder):
             os.mkdir(folder)
@@ -76,7 +90,9 @@ class EmailMessage:
         return f"Subject: {self.subject}\nFrom: {self.sender}\nTo: {self.recipient}\nDate: {self.date}\nBody: {self.body}\nAttachments: {self.attachments}"
 
 class Schedule:
-    def __init__(self, updateTime, faculty, field, degree, mode, year, semester, group, lessons):
+    def __init__(self, updateTime='', faculty='', field='', degree='', mode='', year='', semester='', group='', lessons=None):
+        if lessons is None:
+            lessons = []
         self.updateTime = updateTime
         self.faculty = faculty
         self.field = field
@@ -84,32 +100,28 @@ class Schedule:
         self.mode = mode
         self.year = year
         self.semester = semester
-        self.lessons:List[Lesson] = lessons
         self.group = group
+        self.lessons: List[Lesson] = lessons
 
     @classmethod
-    def getTimetablesFromFile(cls, filename:str):
+    def get_timetables_from_file(cls, filename: str):
         if filename.endswith('.txt'):
             with open(filename, 'r') as f:
-                return [cls.getTimetableFromTXTData(f)]
+                return [cls.get_timetable_from_txt_data(f.read().splitlines())]
         elif filename.endswith('.xlsx'):
             with open(filename, 'rb') as f:
-                return cls.getTimetablesFromXLSXData(BytesIO(f.read()))
+                return cls.get_timetables_from_xlsx_data_openpyxl(BytesIO(f.read()))
         else:
             return []
 
-
-
     @classmethod
-    def getTimetablesFromXLSXData(cls, data:BytesIO):
-        import pandas as pd
+    def get_timetables_from_xlsx_data_openpyxl(cls, data: BytesIO):
         from classes import Schedule, Lesson
-        from typing import List # For type hinting
+        from openpyxl import load_workbook, cell
 
-        def parse_sheet(data):
-            schedules:List[Schedule] = []
-            # Get sheet header
-            schedule_data:str = data.iloc[0, 2].split(',') # type: ignore
+        def parse_sheet(sheet):
+            schedules = []
+            schedule_data = sheet.cell(row=1, column=3).value.split(',')
 
             fieldOfStudent = schedule_data[0].strip()
             degree = schedule_data[1].strip()
@@ -117,18 +129,15 @@ class Schedule:
             semester = schedule_data[3].split('Semestr')[1].strip()
             updateTime = "00:00"
 
-            # Get Groups
-            time_row = data.iloc[2]
-            max_row = data.shape[0]
-            for i in range(3, max_row):
-                groupRow = data.iloc[i]
-                schedule = parse_row(groupRow, time_row)
+            time_row = sheet[3]
+            max_row = sheet.max_row
+            for i in range(4, max_row + 1):
+                group_row = sheet[i]
+                schedule = parse_row(group_row, time_row)
 
-                # Skip division rows
                 if schedule.group == '':
                     continue
 
-                # Set rest of schedule data
                 schedule.updateTime = updateTime
                 schedule.field = fieldOfStudent
                 schedule.degree = degree
@@ -141,66 +150,61 @@ class Schedule:
 
             return schedules
 
-        def parse_row(data, time_row):
+        def parse_row(row, time_row):
             schedule = Schedule.empty()
-            max_col = data.shape[0]-1
-            groupName = str(data[1]).strip()
-            # Skip header
+            max_col = len(row)
+            groupName = str(row[1].value).strip()
+
             if groupName == "Grupy":
                 return schedule
 
             schedule.group = groupName
 
-            # Get day
             dayNum = 0
-            dayText = str(data[0]).strip()
-            if dayText.find('Piątek') != -1:
+            dayText = str(row[0].value).strip()
+            if 'Piątek' in dayText:
                 dayNum = 5
-            elif dayText.find('Sobota') != -1:
+            elif 'Sobota' in dayText:
                 dayNum = 6
-            elif dayText.find('Niedziela') != -1:
+            elif 'Niedziela' in dayText:
                 dayNum = 7
 
-            # Get lessons
-            lessons:List[Lesson] = []
-            lesson:Lesson = Lesson.empty()
+            lessons = []
+            lesson = Lesson.empty()
             lesson.dayNumber = dayNum
             lessonRaw = ""
 
             for j in range(2, max_col):
-                lessonRaw = str(data[j])
-                if lessonRaw == 'nan':
+                lessonRaw = str(row[j].value)
+                if lessonRaw == 'None':
                     continue
 
-                # Set start time
-                lesson.timeStart = time_row[j]
+                lesson.timeStart = time_row[j].value
 
-                # Set end time and set j at the end of lesson
-                k = j+1
-                while(k+1 < max_col and data[k] != lessonRaw):
-                    k += 1
-                lesson.timeEnd = time_row.get(k)
-                j = k
+                # Set j at the next Cell (not MergedCell)
+                while(j+1 < max_col):
+                    # If next cell is MergedCell, skip it
+                    if type(row[j+1]) == cell.MergedCell:
+                        j += 1
+                    else:
+                        break
 
-                # Parse lesson text
+                lesson.timeEnd = time_row[j].value
+
                 lessonRaw = lessonRaw.split(',')
                 lesson.name = lessonRaw[0].split('(')[0].strip()
 
-                # Look for data
                 for text in lessonRaw:
                     if text == 'WARUNEK':
                         continue
-                    elif text.find('(') != -1:
+                    elif '(' in text:
                         lesson.type = text.split('(')[1].split(')')[0].strip()
-                    # Look for location
-                    elif text.find('s.') != -1:
+                    elif 's.' in text:
                         lesson.location = text.split('s.')[1].strip()
-                    # Look for building
-                    elif text.find('b.') != -1:
+                    elif 'b.' in text:
                         lesson.building = text.split('b.')[1].split("]")[0].strip()
-                    # Look for teacher (check if every word starts with capital letter and does not contain numbers)
                     else:
-                        isTeacher = True # (probably)
+                        isTeacher = True
                         for word in text.strip().split(' '):
                             if not word[0].isupper() or any(char.isdigit() for char in word):
                                 isTeacher = False
@@ -208,10 +212,8 @@ class Schedule:
                         if isTeacher:
                             lesson.teacher = text.strip()
 
-                # Check if last line is not location, then it's comment
-                if lessonRaw[-1].find(']') != -1:
-                    lesson.comment = lessonRaw[-1].strip()
-
+                if not ']' in lessonRaw[-1]:
+                    lesson.comment = lessonRaw[-1].strip().strip('.')
 
                 lessons.append(lesson)
                 lesson = Lesson.empty()
@@ -219,40 +221,47 @@ class Schedule:
             schedule.lessons = lessons
             return schedule
 
-        plans:List[Schedule] = []
-        file = pd.ExcelFile(data)
+        plans = []
+        workbook = load_workbook(data, data_only=True)
 
-        # For each sheet in the Excel file
-        for sheet_name in file.sheet_names:
-            sheetData = pd.read_excel(data, sheet_name=sheet_name, header=None)
-            plans_for_sheet = parse_sheet(sheetData)
+        for sheet_name in workbook.sheetnames:
+            sheet = workbook[sheet_name]
+            plans_for_sheet = parse_sheet(sheet)
             plans.extend(plans_for_sheet)
 
         return plans
 
-
     @classmethod
-    def getTimetableFromTXTData(cls, data):
+    def get_timetable_from_txt_data(cls, data: List[str]):
         # 10.10.2023 22:34
         # WZIM, 2023, Jesień , ST, Inf, inż, R4, S7, gr1, ISI-1 ;
         lessons = []
         # Get update time
-        updateTime = data.readline().strip() # 10.10.2023 22:34
+        updateTime = data[0].strip() # 10.10.2023 22:34
         # Get name
-        scheduleInfo = data.readline().strip().split(',')
+        scheduleInfo = data[1].strip().split(',')
         faculty = scheduleInfo[0].strip() # WZIM
         year = scheduleInfo[1].strip() # 2023
         mode = scheduleInfo[3].strip() # ST
         fieldOfStudent = scheduleInfo[4].strip() # Inf
         degree = scheduleInfo[5].strip() # inż
         year = scheduleInfo[6].strip().removeprefix('R').strip() # R4
-        semester = scheduleInfo[7].strip().removeprefix('S').strip()# S7
-        group = scheduleInfo[8].strip().removeprefix('gr').strip()# gr1
+        semester = scheduleInfo[7].strip().removeprefix('S').strip() # S7
+        group = scheduleInfo[8].strip().removeprefix('gr').strip() # gr1
 
+        split_filter = '------------------------------------------------'
+        blocks: List[List[str]] = []
         # Divide file into blocks of lessons
-        blocks = data.read().split('------------------------------------------------\n')
-        # Iterate over blocks
+        block = []
+        for line in data:
+            if line == split_filter:
+                blocks.append(block)
+                block = []
+            else:
+                block.append(line)
+        blocks.append(block)
 
+        # Iterate over blocks
         # ZJ_01
         # Sztuczna Inteligencja [Lab]
         # d1, 10:30-12:00
@@ -260,49 +269,47 @@ class Schedule:
         # Aleksandra Konopka
         # U: 8 tygodni (ostatnie zajęcia 45 minut krócej)
         for block in blocks:
-            if block == '':
+            if block == '' or "ZJ" not in block[0]:
                 continue
-            elif block.find('end.') != -1:
+            elif "end." in block:
                 break
-            # Divide block into lines
-            lines = block.split('\n')
 
             # Parse text
-            num = lines[0].strip()
-            name = lines[1].split('[')[0].strip()
-            type = lines[1].split('[')[1].split(']')[0].strip()
-            day = lines[2].split(',')[0].strip().removeprefix('d').strip()
-            timeStart = lines[2].split(',')[1].split('-')[0].strip()
-            timeEnd = lines[2].split(',')[1].split('-')[1].strip()
-            if lines[3] == "zdalne":
+            num = block[0].strip()
+            name = block[1].split('[')[0].strip()
+            type = block[1].split('[')[1].split(']')[0].strip()
+            day = block[2].split(',')[0].strip().removeprefix('d').strip()
+            timeStart = block[2].split(',')[1].split('-')[0].strip()
+            timeEnd = block[2].split(',')[1].split('-')[1].strip()
+            if block[3] == "zdalne":
                 room = 0
                 building = 0
-            elif lines[3].find('/') != -1:
-                room = lines[3].split('/')[0].strip()
-                building = lines[3].split('/')[1].strip()
+            elif block[3].find('/') != -1:
+                room = block[3].split('/')[0].strip()
+                building = block[3].split('/')[1].strip()
             else:
-                room = lines[3].split(',')[0].strip()
-                building = lines[3].split(',')[1].strip()
+                room = block[3].split(',')[0].strip()
+                building = block[3].split(',')[1].strip()
 
-            building = lines[3].split('/')[0].strip()
-            teacher = lines[5].strip()
-            comment = lines[6].removeprefix('U:').strip()
+            building = block[3].split('/')[0].strip()
+            teacher = block[4].strip()
+            comment = block[5].removeprefix('U:').strip()
 
             # Create lesson object
-            lesson = Lesson(num=num, name=name, type=type, day=day, timeStart=timeStart, timeEnd=timeEnd, room=room, floor=building, building=building, teacher=teacher, comment=comment, created='', updated='')
+            lesson = Lesson(num=num, name=name, type=type, day=day, timeStart=timeStart, timeEnd=timeEnd, room=str(room), floor=building, building=building, teacher=teacher, comment=comment, created='', updated='')
             # Add lesson to lessons list
             lessons.append(lesson)
         return cls(updateTime, faculty, fieldOfStudent, degree, mode, year, semester, group, lessons)
 
     @classmethod
     def empty(cls):
-        return cls('', '', '', '', '', '', '', '', [])
+        return cls()
 
     def __str__(self):
         return f"Update time: {self.updateTime}\nFaculty: {self.faculty}\nField: {self.field}\nDegree: {self.degree}\nMode: {self.mode}\nYear: {self.year}\nSemester: {self.semester}\nGroup: {self.group}\nLessons: {self.lessons}"
 
 class Lesson:
-    def __init__(self, num:int, created:str, updated:str, name:str, type:str, day, timeStart:str, timeEnd:str, room, floor, building, teacher:str, comment:str):
+    def __init__(self, num=0, created='', updated='', name='', type='', day=0, timeStart='', timeEnd='', room='', floor='', building='', teacher='', comment=''):
         self.num = num
         self.created = created
         self.updated = updated
@@ -318,6 +325,7 @@ class Lesson:
 
     @classmethod
     def empty(cls):
-        return cls(num=0, created='', updated='', name='', type='', day='', timeStart='', timeEnd='', room='', floor='', building='', teacher='', comment='')
+        return cls()
+
     def __str__(self):
         return f"{self.name}, {self.type}, {self.dayNumber}, {self.timeStart}, {self.timeEnd}, {self.location}, {self.teacher}"

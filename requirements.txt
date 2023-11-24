@@ -1,2 +1,2 @@
 imapclient
-pandas
+openpyxl
