@@ -244,6 +244,8 @@ class Schedule:
         year = scheduleInfo[1].strip() # 2023
         mode = scheduleInfo[3].strip() # ST
         fieldOfStudent = scheduleInfo[4].strip() # Inf
+        if fieldOfStudent == "Inf":
+            fieldOfStudent = "Informatyka"
         degree = scheduleInfo[5].strip() # inż
         year = scheduleInfo[6].strip().removeprefix('R').strip() # R4
         semester = scheduleInfo[7].strip().removeprefix('S').strip() # S7
