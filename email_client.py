@@ -1,12 +1,14 @@
+from pyclbr import Function
 from classes import EmailMessage
 from imapclient import IMAPClient
+from typing import Callable
 
 # Get username and password from environment variables
 import os
 username= os.environ.get('EMAIL_USERNAME')
 password = os.environ.get('EMAIL_PASSWORD')
-timeout = os.environ.get('TIMEOUT')
-imap_server = os.environ.get('IMAP_SERVER')
+timeout = os.environ.get('TIMEOUT') or 2
+imap_server = os.environ.get('IMAP_SERVER') or 'imap.gmail.com'
 
 if username == None or password == None:
     raise Exception("USERNAME_OR_PASSWORD_NOT_SET")
@@ -33,8 +35,7 @@ def getNLatestEmail(n):
     emailMessage = EmailMessage.from_raw_email(raw_email)
     return emailMessage
 
-# Function to process incoming emails
-def listenForEmails(execOnNewEmail):
+def listenForEmails(execOnNewEmail: Callable):
     # Start an IDLE (IMAP IDLE) command - allows the client to listen for changes
     client.idle()
 
