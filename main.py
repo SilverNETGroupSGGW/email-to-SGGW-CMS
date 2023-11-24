@@ -1,7 +1,9 @@
-from classes import Lesson, Schedule
+from io import BytesIO
+from classes import EmailMessage, Schedule
 import email_client
 
-def processAttachmentsForNLastestEmail(i):
+def processAttachmentsForNLastestEmail(i: int):
+
     # Get allowed senders from env
     import os
     allowedSenders = os.environ['ALLOWED_SENDERS'].split(',')
@@ -12,7 +14,7 @@ def processAttachmentsForNLastestEmail(i):
         email_prefix += "+"
 
     # Get latest email
-    latestEmail = email_client.getNLatestEmail(i) # 0 = latest email, 1 = second latest email, etc.
+    latestEmail:EmailMessage = email_client.getNLatestEmail(i) # 0 = latest email, 1 = second latest email, etc.
 
     # Check if email send to email with prefix
     if not latestEmail.recipient.startswith(email_prefix):
@@ -20,7 +22,7 @@ def processAttachmentsForNLastestEmail(i):
         return
 
     # Check if sender is allowed
-    if latestEmail.sender not in allowedSenders:
+    if latestEmail.sender.split('<')[1].strip('>') not in allowedSenders:
         print("Sender " + latestEmail.sender + "not allowed, skipping...")
         return
 
@@ -30,17 +32,14 @@ def processAttachmentsForNLastestEmail(i):
     for attachment in latestEmail.attachments:
         if attachment.name.endswith('.xlsx'):
             print("Found Excel file, processing...")
-            timetable = Schedule.getTimetableFromTXTData(attachment.content)
+            timetable = Schedule.get_timetables_from_xlsx_data_openpyxl(BytesIO(attachment.content))
             print(timetable)
         elif attachment.name.endswith('.txt'):
             print("Found text file, processing...")
-            timetable = Schedule.getTimetablesFromXLSXData(attachment.content)
+            # Text is in UTF-8 with BOM
+            timetable = Schedule.get_timetable_from_txt_data(attachment.content.decode('utf-8-sig').splitlines())
             print(timetable)
         else:
             print("Unknown file type, skipping...")
 
-schedules = Schedule.getTimetablesFromFile('plan.xlsx')
-for schedule in schedules:
-    print(schedule)
-    for lesson in schedule.lessons:
-        print(lesson)
+processAttachmentsForNLastestEmail(0)
