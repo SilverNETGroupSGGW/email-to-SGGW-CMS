@@ -12,7 +12,7 @@ timeout = os.environ.get("TIMEOUT") or 20
 imap_server = os.environ.get("IMAP_SERVER") or "imap.gmail.com"
 
 if username == None or password == None:
-    raise Exception("USERNAME_OR_PASSWORD_NOT_SET")
+    raise Exception("EMAIL_USERNAME_OR_PASSWORD_NOT_SET")
 
 def getEmails():
     messages:SearchIds = fetcher.search()
