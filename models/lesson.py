@@ -8,7 +8,7 @@ from datetime import time
 
 class LessonType(Enum):
     LABORATORIES = "Laboratories"
-    PRACTICAL_CLASSES = "PracticalClasses"
+    PracticalClasses = "PracticalClasses"
     LECTURE = "Lecture"
     UNKNOWN = "Unknown"
 
@@ -16,7 +16,7 @@ def strToType(string:str):
     if "lab" in string.lower():
         return LessonType.LABORATORIES
     elif "ćw" in string.lower():
-        return LessonType.PRACTICAL_CLASSES
+        return LessonType.PracticalClasses
     elif "w" in string.lower():
         return LessonType.LECTURE
     else:

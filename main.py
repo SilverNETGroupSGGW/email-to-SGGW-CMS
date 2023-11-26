@@ -1,8 +1,9 @@
 from io import BytesIO
 import lib.email_client as email_client
 import lib.api_client as api_client
-from models.emailMessage import EmailMessage
 from models.schedule import Schedule
+from lib.logger import logger
+
 
 def processAttachmentsForNLastestEmail(i: int):
     # Get allowed senders from env
@@ -15,7 +16,10 @@ def processAttachmentsForNLastestEmail(i: int):
         email_prefix += "+"
 
     # Get latest email
-    latestEmail:EmailMessage = email_client.getNLatestEmail(i) # 0 = latest email, 1 = second latest email, etc.
+    latestEmail = email_client.getNLatestEmail(0) # 0 = latest email, 1 = second latest email, etc.
+
+    if latestEmail == None:
+        return
 
     # Check if email send to email with prefix
     if not latestEmail.recipient.startswith(email_prefix):
@@ -24,22 +28,28 @@ def processAttachmentsForNLastestEmail(i: int):
 
     # Check if sender is allowed
     if latestEmail.sender.split("<")[1].strip(">") not in allowedSenders:
-        print("Sender " + latestEmail.sender + "not allowed, skipping...")
+        logger.info("Sender " + latestEmail.sender + "not allowed, skipping...")
         return
 
     if len(latestEmail.attachments) == 0:
-        print("No attachments, skipping...")
+        logger.info("No attachments, skipping...")
         return
     for attachment in latestEmail.attachments:
         if attachment.name.endswith(".xlsx"):
-            print("Found Excel file, processing...")
+            logger.info("Found Excel file, processing...")
             timetable = Schedule.get_timetables_from_xlsx_data_openpyxl(BytesIO(attachment.content))
+            logger.info("Sending data to API...")
             api_client.changePlanData(timetable)
+            logger.info("Done")
         elif attachment.name.endswith(".txt"):
-            print("Found text file, processing...")
+            logger.info("Found text file, processing...")
             # Text is in UTF-8 with BOM
             timetable = Schedule.get_timetable_from_txt_data(attachment.content.decode("utf-8-sig").splitlines())
+            logger.info("Sending data to API...")
             api_client.changePlanData([timetable])
+            logger.info("Done")
         else:
-            print("Unknown file type, skipping...")
+            logger.warning("Unknown file type, skipping...")
+# Process attachments for latest unread email, if script wasnt run before
+processAttachmentsForNLastestEmail(0)
 email_client.listenForEmails(processAttachmentsForNLastestEmail)

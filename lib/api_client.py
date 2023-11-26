@@ -51,7 +51,7 @@ def changeClassroom(id: str, classroom: Location):
             raise Exception("ERROR_CHANGING_CLASSROOM")
 
 def addClassroom(classroom: Location):
-    classroomID = requests.post(api_url + "/Classrooms", headers=header, json=json.dumps(classroom.to_map()))
+    classroomID = requests.post(api_url + "/Classrooms", headers=header, json=classroom.to_map())
     if classroomID.status_code != 200:
         raise Exception("ERROR_POSTING_CLASSROOM")
     classroomID = findClassroomID(classroom)
@@ -108,7 +108,7 @@ def changeSchedule(id: str, schedule: Schedule):
 
 def findScheduleID(schedule: Schedule):
     for scheduleJSON in getSchedules():
-        if scheduleJSON["name"] == schedule.name:
+        if scheduleJSON["name"] == schedule.name():
             return scheduleJSON["id"]
     raise Exception("ERROR_FINDING_SCHEDULE_ID")
 
@@ -129,7 +129,7 @@ def getLecturers():
 def changeLecturer(id: str, lecturer: str):
     lecturerJson = {"name": lecturer}
     lecturerJson["id"] = id
-    with requests.put(api_url + "/Lecturers", headers=header, json=json.dumps(lecturerJson)) as req:
+    with requests.put(api_url + "/Lecturers", headers=header, json=lecturerJson) as req:
         if req.status_code != 200:
             raise Exception("ERROR_CHANGING_LECTURER")
 
@@ -140,7 +140,7 @@ def findLecturerID(lecturer: Lecturer):
     raise Exception("ERROR_FINDING_LECTURER_ID")
 
 def addLecturer(lecturer: Lecturer):
-    lecturerID = requests.post(api_url + "/Lecturers", headers=header, json=json.dumps(lecturer.to_map()))
+    lecturerID = requests.post(api_url + "/Lecturers", headers=header, json=lecturer.to_map())
     if lecturerID.status_code != 200:
         raise Exception("ERROR_POSTING_LECTURER")
     lecturerID = findLecturerID(lecturer)
@@ -177,8 +177,14 @@ def addLesson(lesson: Lesson, scheduleID: str, groupID: str, classroomID: str, l
     return lessonID
 
 def changePlanData(schedules: List[Schedule]):
+    from lib.logger import logger
     # Update schedules
     for schedule in schedules:
+        logger.info("")
+        logger.info("Updating plan data for")
+        logger.info(schedule.name())
+        logger.info("Group " + schedule.group.name)
+        logger.info("Day " + schedule.lessons[0].day.name)
         try:
             scheduleID = findScheduleID(schedule)
         except:

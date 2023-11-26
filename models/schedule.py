@@ -28,14 +28,17 @@ class Schedule:
         if lessons == []:
             lessons = []
         self.faculty = faculty
-        self.name = field + " R" + str(year) + "S" + str(semester)
         self.field = field
         self.degree = degree
         self.mode = mode
         self.year = year
         self.semester = semester
-        self.group = group
+        self.group:Group = group
         self.lessons: List[Lesson] = lessons
+
+    def name(self):
+        return self.field + " R" + str(self.year) + "S" + str(self.semester)
+
 
     @classmethod
     def get_timetables_from_xlsx_data_openpyxl(cls, data: BytesIO):
@@ -52,9 +55,14 @@ class Schedule:
             year = schedule_data[2].split("Rok")[1].strip()
             semester = schedule_data[3].split("Semestr")[1].strip()
 
-            time_row = sheet[3]
-            max_row = sheet.max_row
-            for i in range(4, max_row + 1):
+            time_row:tuple[Cell,...] = ()
+            i:int = 2
+            while sheet[i+1][1].value != None and sheet[i+1][1].value != "":
+                i += 1
+                # Check if this is time row
+                if sheet[i][1].value == "Grupy":
+                    time_row = sheet[i]
+                    continue
                 group_row = sheet[i]
                 schedule = parse_row(group_row, time_row)
 
@@ -68,7 +76,17 @@ class Schedule:
                 schedule.mode = "ZO"
                 schedule.faculty = "WZIM"
 
-                schedules.append(schedule)
+                # Check if schedule already exists
+                skip = False
+                for existing_schedule in schedules:
+                    if existing_schedule.name() == schedule.name():
+                        if existing_schedule.group.name == schedule.group.name:
+                            existing_schedule.lessons.extend(schedule.lessons)
+                            skip = True
+                            break
+                if not skip:
+                    schedules.append(schedule)
+
 
             return schedules
 
@@ -80,7 +98,7 @@ class Schedule:
             if groupName == "Grupy":
                 return schedule
 
-            schedule.group = groupName
+            schedule.group = Group(groupName)
 
             dayWithInfo = str(row[0].value).strip()
             if "Piątek" in dayWithInfo:
@@ -99,7 +117,7 @@ class Schedule:
                 if lessonRaw == "None":
                     continue
 
-                lesson.startTime = datetime.strptime(str(time_row[j].value), "%H:%M").time()
+                lesson.startTime = time_row[j].value
 
                 # Set j at the next Cell (not MergedCell)
                 while(j+1 < max_col):
@@ -109,7 +127,7 @@ class Schedule:
                     else:
                         break
 
-                lesson.endTime = datetime.strptime(str(time_row[j].value), "%H:%M").time()
+                lesson.endTime = time_row[j].value
 
                 lessonRaw = lessonRaw.split(",")
                 lesson.name = lessonRaw[0].split("(")[0].strip()
@@ -138,7 +156,7 @@ class Schedule:
                             lesson.lecturer.name = " ".join(teacherData[0:-2])
                             lesson.lecturer.surname = teacherData[-1].strip()
 
-                if not "]" in lessonRaw[-1]:
+                if not "]" in lessonRaw[-1] and len(lessonRaw) > 1:
                     lesson.comment = lessonRaw[-1].strip().strip(".")
 
                 schedule.lessons.append(lesson)
@@ -158,18 +176,19 @@ class Schedule:
         # 10.10.2023 22:34
         # WZIM, 2023, Jesień , ST, Inf, inż, R4, S7, gr1, ISI-1 ;
         lessons:List[Lesson] = []
+        schedule = Schedule()
         # Get name
         scheduleInfo = data[1].strip().split(",")
-        faculty = scheduleInfo[0].strip() # WZIM
-        year = scheduleInfo[1].strip() # 2023
-        mode = scheduleInfo[3].strip() # ST
-        fieldOfStudent = scheduleInfo[4].strip() # Inf
-        if fieldOfStudent == "Inf":
-            fieldOfStudent = "Informatyka"
-        degree = scheduleInfo[5].strip() # inż
-        year = int(scheduleInfo[6].strip().removeprefix("R").strip()) # R4
-        semester = int(scheduleInfo[7].strip().removeprefix("S").strip()) # S7
-        group = scheduleInfo[8].strip().removeprefix("gr").strip() # gr1
+        schedule.faculty = scheduleInfo[0].strip() # WZIM
+        schedule.year = scheduleInfo[1].strip() # 2023
+        schedule.mode = scheduleInfo[3].strip() # ST
+        schedule.field = scheduleInfo[4].strip() # Inf
+        if schedule.field == "Inf":
+            schedule.field = "Informatyka"
+        schedule.degree = scheduleInfo[5].strip() # inż
+        schedule.year = int(scheduleInfo[6].strip().removeprefix("R").strip()) # R4
+        schedule.semester = int(scheduleInfo[7].strip().removeprefix("S").strip()) # S7
+        schedule.group = Group(scheduleInfo[8].strip().removeprefix("gr").strip()) # gr1
 
         split_filter = "------------------------------------------------"
         blocks: List[List[str]] = []
@@ -228,7 +247,8 @@ class Schedule:
 
             # Add lesson to lessons list
             lessons.append(lesson)
-        return cls(faculty, fieldOfStudent, degree, mode, year, semester, Group(group), lessons)
+        schedule.lessons = lessons
+        return schedule
 
     @classmethod
     def get_timetables_from_file(cls, filename: str) -> List["Schedule"]:
@@ -244,7 +264,7 @@ class Schedule:
 
     def to_map(self):
         return {
-            "name": secureString(self.name)
+            "name": secureString(self.name())
         }
 
     def __str__(self):
