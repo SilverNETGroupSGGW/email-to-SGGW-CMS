@@ -1,9 +1,11 @@
 import datetime
 from enum import Enum
+from lib.api_client import *
 from lib.string_safety import secureString
+from models.group import Group
 from models.location import Location
 from models.lecturer import Lecturer
-from typing import List
+from typing import Any, List
 from datetime import time
 
 class LessonType(Enum):
@@ -49,28 +51,25 @@ class DayOfWeek(Enum):
             return DayOfWeek.MONDAY
 
 class Lesson:
-    def __init__(self, num:int=0, name:str="", type:LessonType = LessonType.UNKNOWN, day:DayOfWeek=DayOfWeek.MONDAY, timeStart:time=time(), timeEnd:time=time(), location:Location=Location(), lecturer:Lecturer=Lecturer(), comment:str=""):
+    def __init__(self, num:int=0, name:str="", groups:List[Group] = [], type:LessonType = LessonType.UNKNOWN,\
+                 day:DayOfWeek=DayOfWeek.MONDAY, timeStart:time=time(), timeEnd:time=time(), location: None = None,\
+                 lecturers:List[Lecturer]=[], comment:str=""):
         self.num = num
+        self.groups: List[Group] = groups
         self.name = name
         self.type = type
         self.day:DayOfWeek = day
         self.startTime:time = timeStart
         self.endTime:time = timeEnd
-        self.location:Location = location
-        self.lecturer:Lecturer = lecturer
+        self.location:Location | None = location
+        self.lecturers:List[Lecturer] = lecturers
         self.comment = comment
 
     def duration(self) -> time:
         dateDiffrence = datetime.datetime.combine(datetime.date.today(), self.endTime) - datetime.datetime.combine(datetime.date.today(), self.startTime)
         return time(dateDiffrence.seconds // 3600, (dateDiffrence.seconds // 60) % 60)
 
-
-    def to_map(self, scheduleID: str, classroomID: str, groupIDs: List[str], lecturerIDs: List[str]):
-        for groupID in groupIDs:
-            groupID = secureString(groupID)
-
-        for lecturerID in lecturerIDs:
-            lecturerID = secureString(lecturerID)
+    def to_map(self, scheduleID: str, lecturerIDs: List[str], groupIDs: List[str], classroomID: str) -> dict[str, Any]:
         return {
             "name": secureString(self.name),
             "scheduleId": secureString(scheduleID),
@@ -80,8 +79,8 @@ class Lesson:
             "duration": self.duration().strftime("%H:%M:%S"),
             "lecturersIds": lecturerIDs,
             "groupsIds": groupIDs,
-            "classroomId": secureString(classroomID),
+            "classroomId": classroomID,
             "comment": secureString(self.comment)
         }
     def __str__(self):
-        return f"{self.name}, {self.type}, {self.day}, {self.startTime}, {self.endTime}, {self.location}, {self.lecturer}"
+        return f"{self.name}, {self.type}, {self.day}, {self.startTime}, {self.endTime}, {self.location}, {self.lecturers}, {self.comment}"
