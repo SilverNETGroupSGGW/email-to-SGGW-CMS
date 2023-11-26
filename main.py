@@ -34,13 +34,12 @@ def processAttachmentsForNLastestEmail(i: int):
         if attachment.name.endswith(".xlsx"):
             print("Found Excel file, processing...")
             timetable = Schedule.get_timetables_from_xlsx_data_openpyxl(BytesIO(attachment.content))
-            print(timetable)
+            api_client.changePlanData(timetable)
         elif attachment.name.endswith(".txt"):
             print("Found text file, processing...")
             # Text is in UTF-8 with BOM
             timetable = Schedule.get_timetable_from_txt_data(attachment.content.decode("utf-8-sig").splitlines())
-            print(timetable)
+            api_client.changePlanData([timetable])
         else:
             print("Unknown file type, skipping...")
-
-api_client.changePlanData(Schedule.get_timetables_from_file("plan.txt"))
+email_client.listenForEmails(processAttachmentsForNLastestEmail)
