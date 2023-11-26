@@ -37,7 +37,9 @@ def getClassrooms():
         raise Exception("ERROR_GETTING_CLASSROOMS")
     return json.loads(r.text)
 
-def findClassroomID(location: Location):
+def findClassroomID(location: Location | None):
+    if location == None:
+        location = Location(building="Zdalnie")
     for classroom in getClassrooms():
         if classroom["name"] == location.name() and classroom["building"] == location.building:
             return classroom["id"]
@@ -50,8 +52,15 @@ def changeClassroom(id: str, classroom: Location):
         if req.status_code != 200:
             raise Exception("ERROR_CHANGING_CLASSROOM")
 
-def addClassroom(classroom: Location):
-    classroomID = requests.post(api_url + "/Classrooms", headers=header, json=classroom.to_map())
+def addClassroom(classroom: Location| None):
+    if classroom == None:
+        classroomJson = {
+        "name": "",
+        "building": "Zdalnie"
+        }
+    else:
+        classroomJson = classroom.to_map()
+    classroomID = requests.post(api_url + "/Classrooms", headers=header, json=classroomJson)
     if classroomID.status_code != 200:
         raise Exception("ERROR_POSTING_CLASSROOM")
     classroomID = findClassroomID(classroom)
@@ -68,9 +77,9 @@ def getGroups():
         raise Exception("ERROR_GETTING_GROUPS")
     return json.loads(r.text)
 
-def findGroupID(group: Group):
+def findGroupID(group: Group, scheduleID: str) -> str:
     for groupJSON in getGroups():
-        if groupJSON["name"] == group.name:
+        if groupJSON["name"] == group.name and groupJSON["scheduleId"] == scheduleID:
             return groupJSON["id"]
     raise Exception("ERROR_FINDING_GROUP_ID")
 
@@ -85,8 +94,7 @@ def addGroup(group: Group, scheduleID: str):
     groupID = requests.post(api_url + "/Groups", headers=header, json=group.to_map(scheduleID=scheduleID))
     if groupID.status_code != 200:
         raise Exception("ERROR_POSTING_GROUP")
-    groupID = findGroupID(group)
-    return groupID
+    return findGroupID(group, scheduleID=scheduleID)
 
 def deleteGroup(id: str):
     with requests.delete(api_url + "/Groups/" + id, headers=header) as req:
@@ -133,10 +141,11 @@ def changeLecturer(id: str, lecturer: str):
         if req.status_code != 200:
             raise Exception("ERROR_CHANGING_LECTURER")
 
-def findLecturerID(lecturer: Lecturer):
+def findLecturerID(lecturer: Lecturer) -> str:
     for lecturerJSON in getLecturers():
-        if lecturerJSON["firstName"] == lecturer.name and lecturerJSON["surname"] == lecturer.surname and lecturerJSON["email"] == lecturer.email:
+        if lecturerJSON["firstName"] == lecturer.name:
             return lecturerJSON["id"]
+
     raise Exception("ERROR_FINDING_LECTURER_ID")
 
 def addLecturer(lecturer: Lecturer):
@@ -162,63 +171,83 @@ def deleteLesson(id: str):
         if req.status_code != 200:
             raise Exception("ERROR_DELETING_LESSON")
 
-def findLessonID(lesson: Lesson, scheduleID: str, groupID: str, classroomID: str, lecturerID: str):
+def findLessonID(lesson: Lesson, scheduleID: str):
     for lessonJSON in getLessons():
-        if lessonJSON["name"] == lesson.name and lessonJSON["scheduleId"] == scheduleID and lessonJSON["classroomId"] == classroomID and lessonJSON["lecturersIds"] == [lecturerID] and lessonJSON["groupsIds"] == [groupID] and lessonJSON["dayOfWeek"].lower() == lesson.day.name.lower() and lessonJSON["startTime"] == lesson.startTime.strftime("%H:%M:%S") and lessonJSON["duration"] == lesson.duration().strftime("%H:%M:%S"):
+        if lessonJSON["name"] == lesson.name \
+            and lessonJSON["scheduleId"] == scheduleID \
+                and lessonJSON["type"] == lesson.type.name \
+                    and lessonJSON["startTime"] == lesson.startTime.strftime("%H:%M:%S") \
+                        and lessonJSON["dayOfWeek"] == lesson.day.name \
+                            and lessonJSON["duration"] == lesson.duration().strftime("%H:%M:%S") \
+                                and lessonJSON["comment"] == lesson.comment \
+                                    and lessonJSON["classroomId"] == findClassroomID(lesson.location):
             return lessonJSON["id"]
     raise Exception("ERROR_FINDING_LESSON_ID")
 
-def addLesson(lesson: Lesson, scheduleID: str, groupID: str, classroomID: str, lecturerID: str):
-    lessonJson = lesson.to_map(scheduleID=scheduleID, groupIDs=[groupID], classroomID=classroomID, lecturerIDs=[lecturerID])
+def addLesson(lesson: Lesson, scheduleID: str):
+    lessonJson = lesson.to_map(scheduleID=scheduleID, lecturerIDs=[findLecturerID(lecturer) for lecturer in lesson.lecturers], groupIDs=[findGroupID(group, scheduleID) for group in lesson.groups], classroomID=findClassroomID(lesson.location))
     lessonID = requests.post(api_url + "/Lessons", headers=header, json=lessonJson)
     if lessonID.status_code != 200:
         raise Exception("ERROR_POSTING_LESSON")
-    lessonID = findLessonID(lesson, scheduleID, groupID, classroomID, lecturerID)
     return lessonID
+
+def addGroupToLesson(lessonID: str, groupID: str):
+    lessonJson = requests.get(api_url + "/Lessons/" + lessonID, headers=header)
+    if lessonJson.status_code != 200:
+        raise Exception("ERROR_GETTING_LESSON")
+    lessonJson = json.loads(lessonJson.text)
+    lessonJson["groupsIds"].append(groupID)
+    with requests.put(api_url + "/Lessons", headers=header, json=json.dumps(lessonJson)) as req:
+        if req.status_code != 200:
+            raise Exception("ERROR_CHANGING_LESSON")
 
 def changePlanData(schedules: List[Schedule]):
     from lib.logger import logger
+
     # Update schedules
     for schedule in schedules:
         logger.info("")
         logger.info("Updating plan data for")
         logger.info(schedule.name())
-        logger.info("Group " + schedule.group.name)
         logger.info("Degree " + schedule.degree)
+
+        # Check if schedule exists
         try:
             scheduleID = findScheduleID(schedule)
         except:
             scheduleID = addSchedule(schedule)
 
-        try:
-            groupID = findGroupID(schedule.group)
-        except:
-            groupID = addGroup(schedule.group, scheduleID=scheduleID)
+        # Check if groups exists
+        for group in schedule.groups:
+            try:
+                findGroupID(group, scheduleID)
+            except:
+                addGroup(group, scheduleID)
 
-        # Delete every existing lesson for this schedule
-        for lessonJSON in getLessons():
-            if lessonJSON["scheduleId"] == scheduleID:
-                deleteLesson(lessonJSON["id"])
+        # Remove lessons for this schedule
+        for lessonJson in getLessons():
+            if lessonJson["scheduleId"] == scheduleID:
+                deleteLesson(lessonJson["id"])
 
         # Add back lessons for this schedule
         for lesson in schedule.lessons:
             # Check if classroom exists
             try:
-                classroomID = findClassroomID(lesson.location)
+                findClassroomID(lesson.location)
             except:
-                classroomID = addClassroom(lesson.location)
+                addClassroom(lesson.location)
 
             # Check if lecturer exists
+            for lecturer in lesson.lecturers:
+                try:
+                    findLecturerID(lecturer)
+                except:
+                    addLecturer(lecturer)
             try:
-                lecturerID = findLecturerID(lesson.lecturer)
+                lessonID = findLessonID(lesson, scheduleID)
             except:
-                lecturerID = addLecturer(lesson.lecturer)
+                addLesson(lesson, scheduleID)
+                continue
 
-            # Check if group exists
-            try:
-                groupID = findGroupID(schedule.group)
-            except:
-                groupID = addGroup(schedule.group, scheduleID=scheduleID)
-
-            # Add lesson
-            addLesson(lesson=lesson, scheduleID=scheduleID, groupID=groupID, classroomID=classroomID, lecturerID=lecturerID)
+            for group in lesson.groups:
+                addGroupToLesson(lessonID, findGroupID(group, scheduleID))
