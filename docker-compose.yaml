@@ -1,0 +1,13 @@
+version: '3'
+services:
+  emailListener:
+    container_name: Email to SGGW CMS
+    image: thephaseless/email-to-SGGW-CMS
+    environment:
+      - EMAIL_HOST=imap.gmail.com
+      - EMAIL_USERNAME=
+      - EMAIL_PASSWORD=
+      - EMAIL_TIMEOUT=20
+      - API_URL=https://kampus-sggw-api.azurewebsites.net/api
+      - API_USERNAME=
+      - API_PASSWORD=
