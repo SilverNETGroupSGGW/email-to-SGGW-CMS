@@ -8,7 +8,7 @@ from lib.logger import logger
 def processAttachmentsForNLastestEmail(i: int):
     # Get allowed senders from env
     import os
-    allowedSenders = os.environ["ALLOWED_SENDERS"].split(",")
+    allowedSenders = (os.environ.get("ALLOWED_SENDERS") or "").split(",")
     email_prefix = os.environ.get("EMAIL_PREFIX") or ""
 
     # Add email prefix if set
@@ -50,6 +50,6 @@ def processAttachmentsForNLastestEmail(i: int):
             logger.info("Done")
         else:
             logger.warning("Unknown file type, skipping...")
-# Process attachments for latest unread email, if script wasnt run before
+
 processAttachmentsForNLastestEmail(0)
 email_client.listenForEmails(processAttachmentsForNLastestEmail)
