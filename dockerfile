@@ -1,18 +1,6 @@
 # Use Python 3.11 as base image
 FROM python:3.11-slim
 
-# Get credentials from launch args
-ARG USERNAME
-ARG APP_PASSWORD
-
-# Set environment variables
-ENV USERNAME=${USERNAME}
-ENV APP_PASSWORD=${APP_PASSWORD}
-ENV TIMEOUT=${TIMEOUT}
-ENV IMAP_SERVER=${IMAP_SERVER}
-ENV ALLOWED_SENDERS=${ALLOWED_SENDERS}
-ENV EMAIL_PREFIX=${EMAIL_PREFIX}
-
 # Copy files to container
 COPY . /app
 
