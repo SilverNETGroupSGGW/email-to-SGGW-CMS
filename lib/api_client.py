@@ -184,7 +184,7 @@ def changePlanData(schedules: List[Schedule]):
         logger.info("Updating plan data for")
         logger.info(schedule.name())
         logger.info("Group " + schedule.group.name)
-        logger.info("Day " + schedule.lessons[0].day.name)
+        logger.info("Degree " + schedule.degree)
         try:
             scheduleID = findScheduleID(schedule)
         except:
