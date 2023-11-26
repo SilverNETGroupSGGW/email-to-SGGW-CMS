@@ -1,106 +1,94 @@
 from io import BytesIO
-from typing import List # For type hinting
+from typing import  List # For type hinting
 from datetime import datetime
 from lib.string_safety import secureString
+from models.lecturer import Lecturer
 from models.lesson import DayOfWeek, Lesson, strToType
 from models.group import Group
+from models.location import Location
 
 def dayToDayNum(day: str):
-    if day == "Poniedziałek":
+    if  "Poniedziałek" in day:
         return 1
-    elif day == "Wtorek":
+    elif "Wtorek" in day:
         return 2
-    elif day == "Środa":
+    elif "Środa" in day:
         return 3
-    elif day == "Czwartek":
+    elif "Czwartek" in day:
         return 4
-    elif day == "Piątek":
+    elif "Piątek" in day:
         return 5
-    elif day == "Sobota":
+    elif "Sobota" in day:
         return 6
-    elif day == "Niedziela":
+    elif "Niedziela" in day:
         return 7
     else:
-        return 0
+        raise Exception("NO_DAY_FOUND")
 
 class Schedule:
-    def __init__(self, faculty:str="", field:str="", degree:str="", mode:str="", year:int=0, semester:int=0, group:Group=Group(), lessons:List[Lesson]=[]):
-        if lessons == []:
-            lessons = []
+    def __init__(self, faculty:str="", field:str="", degree:str="", mode:str="", year:int=0, semester:int=0, lessons:List[Lesson]=[]):
         self.faculty = faculty
         self.field = field
         self.degree = degree
         self.mode = mode
         self.year = year
         self.semester = semester
-        self.group:Group = group
-        self.lessons: List[Lesson] = lessons
+        self.groups:List[Group] = []
+        self.lessons:List[Lesson] = lessons
 
     def name(self):
-        return self.field + " R" + str(self.year) + "S" + str(self.semester)
-
+        return self.field + " R" + str(self.year) + "S" + str(self.semester) + " " + self.mode + " " + self.degree
 
     @classmethod
     def get_timetables_from_xlsx_data_openpyxl(cls, data: BytesIO):
         from openpyxl import load_workbook, cell
         from openpyxl.worksheet.worksheet import Worksheet
-        from openpyxl.cell.cell import Cell, MergedCell
+        from openpyxl.cell.cell import Cell
 
         def parse_sheet(sheet: Worksheet):
-            schedules:List[Schedule] = []
+            schedule:Schedule = Schedule(lessons=[])
             schedule_data = str(sheet.cell(row=1, column=3).value).split(sep=",")
 
-            fieldOfStudent = schedule_data[0].strip()
-            degree = schedule_data[1].strip()
-            year = schedule_data[2].split("Rok")[1].strip()
-            semester = schedule_data[3].split("Semestr")[1].strip()
+            # Get schedule data from first rows
+            schedule.field = schedule_data[0].strip()
+            schedule.degree = schedule_data[1].strip()
+            schedule.year = schedule_data[2].split("Rok")[1].strip()
+            schedule.semester = schedule_data[3].split("Semestr")[1].strip()
+            schedule.mode = "ZO"
+            schedule.faculty = "WZIM"
 
             time_row:tuple[Cell,...] = ()
             i:int = 2
-            while sheet[i+1][1].value != None and sheet[i+1][1].value != "":
+            # Iterate over next rows
+            while str(sheet[i+1][1].value) != 'None':
                 i += 1
                 # Check if this is time row
                 if sheet[i][1].value == "Grupy":
                     time_row = sheet[i]
                     continue
-                group_row = sheet[i]
-                schedule = parse_row(group_row, time_row)
 
-                if schedule.group == Group():
-                    continue
+                smallSchedule = parse_row(sheet, i, time_row)
+                schedule.lessons.extend(smallSchedule.lessons)
+                existingGroupNames = [group.name for group in schedule.groups]
+                for group in smallSchedule.groups:
+                    if group.name not in existingGroupNames:
+                        schedule.groups.append(group)
+            return schedule
 
-                schedule.field = fieldOfStudent
-                schedule.degree = degree
-                schedule.year = year
-                schedule.semester = semester
-                schedule.mode = "ZO"
-                schedule.faculty = "WZIM"
-
-                # Check if schedule already exists
-                skip = False
-                for existing_schedule in schedules:
-                    if existing_schedule.name() == schedule.name():
-                        if existing_schedule.group.name == schedule.group.name:
-                            existing_schedule.lessons.extend(schedule.lessons)
-                            skip = True
-                            break
-                if not skip:
-                    schedules.append(schedule)
-
-
-            return schedules
-
-        def parse_row(row:tuple[Cell | MergedCell,...], time_row:tuple[Cell,...]):
-            schedule = Schedule()
+        def parse_row(worksheet:Worksheet, n:int, time_row:tuple[Cell,...]):
+            schedule = Schedule(lessons=[])
+            row = worksheet[n]
             max_col = len(row)
-            groupName = str(row[1].value).strip()
+            group = Group(str(row[1].value).strip())
+            schedule.groups.append(group)
 
-            if groupName == "Grupy":
-                return schedule
+            # Find day info
+            temp = n
+            while type(worksheet[temp][0]) == cell.MergedCell:
+                temp -= 1
 
-            schedule.group = Group(groupName)
+            dayWithInfo = str(worksheet[temp][0].value).strip()
 
-            dayWithInfo = str(row[0].value).strip()
             if "Piątek" in dayWithInfo:
                 day = DayOfWeek.FRIDAY
             elif "Sobota" in dayWithInfo:
@@ -108,27 +96,33 @@ class Schedule:
             elif "Niedziela" in dayWithInfo:
                 day = DayOfWeek.SUNDAY
             else:
-                day = DayOfWeek.MONDAY
+                raise Exception("NO_DAY_FOUND")
 
-            for j in range(2, max_col):
-                lesson = Lesson(day=day)
+            j = 1
+            while j+1 < max_col:
+                j += 1
+                lesson = Lesson(day=day, lecturers=[], groups=[group])
+                temp = n
 
-                lessonRaw = str(row[j].value)
-                if lessonRaw == "None":
+                # Get to the first non-merged cell
+                while type(worksheet[temp][j]) == cell.MergedCell:
+                    temp -= 1
+
+                if str(worksheet[temp][j].value) == "None":
                     continue
 
+                temprow = worksheet[temp]
                 lesson.startTime = time_row[j].value
 
-                # Set j at the next Cell (not MergedCell)
-                while(j+1 < max_col):
-                    # If next cell is MergedCell, skip it
-                    if type(row[j+1]) == cell.MergedCell:
-                        j += 1
-                    else:
-                        break
+                # Save lesson data for later
+                lessonRaw = str(temprow[j].value).strip()
 
+                # Go back to the propper row and the rest of the lesson
+                while (j+1 < max_col) and (type(worksheet[n][j+1]) == cell.MergedCell):
+                    j += 1
                 lesson.endTime = time_row[j].value
 
+                # Parse lesson data
                 lessonRaw = lessonRaw.split(",")
                 lesson.name = lessonRaw[0].split("(")[0].strip()
 
@@ -139,11 +133,17 @@ class Schedule:
                         lesson.type = strToType(string=text.split("(")[1].split(")")[0].strip())
                     elif "s." in text:
                         if "/" in text:
+                            if lesson.location == None:
+                                lesson.location = Location()
                             lesson.location.floor = int(text.split("s.")[1].split("/")[0].strip())
                             lesson.location.classroom = text.split("s.")[1].split("/")[1].strip()
                         else:
+                            if lesson.location == None:
+                                lesson.location = Location()
                             lesson.location.classroom = text.split("s.")[1].strip()
                     elif "b." in text:
+                        if lesson.location == None:
+                            lesson.location = Location()
                         lesson.location.building = text.split("b.")[1].split("]")[0].strip()
                     else:
                         isTeacher = True
@@ -152,9 +152,12 @@ class Schedule:
                                 isTeacher = False
                                 break
                         if isTeacher:
-                            teacherData = text.strip().split(" ")
-                            lesson.lecturer.name = " ".join(teacherData[0:-2])
-                            lesson.lecturer.surname = teacherData[-1].strip()
+                            lecturerData = text.strip().split(" ")
+                            lecturer = Lecturer()
+                            # Name is everything except the last word
+                            lecturer.name = " ".join(lecturerData[:-1])
+                            lecturer.surname = lecturerData[-1].strip()
+                            lesson.lecturers.append(lecturer)
 
                 if not "]" in lessonRaw[-1] and len(lessonRaw) > 1:
                     lesson.comment = lessonRaw[-1].strip().strip(".")
@@ -167,8 +170,9 @@ class Schedule:
 
         for sheet_name in workbook.sheetnames:
             sheet = workbook[sheet_name]
-            plans_for_sheet = parse_sheet(sheet)
-            plans.extend(plans_for_sheet)
+            parsed_sheet = parse_sheet(sheet)
+            plans.append(parsed_sheet)
+
         return plans
 
     @classmethod
@@ -188,7 +192,8 @@ class Schedule:
         schedule.degree = scheduleInfo[5].strip() # inż
         schedule.year = int(scheduleInfo[6].strip().removeprefix("R").strip()) # R4
         schedule.semester = int(scheduleInfo[7].strip().removeprefix("S").strip()) # S7
-        schedule.group = Group(scheduleInfo[8].strip().removeprefix("gr").strip()) # gr1
+        group = Group(scheduleInfo[8].strip().removeprefix("gr").strip()) # gr1
+        schedule.groups.append(group)
 
         split_filter = "------------------------------------------------"
         blocks: List[List[str]] = []
@@ -203,14 +208,8 @@ class Schedule:
         blocks.append(block)
 
         # Iterate over blocks
-        # ZJ_01
-        # Sztuczna Inteligencja [Lab]
-        # d1, 10:30-12:00
-        # 3/18
-        # Aleksandra Konopka
-        # U: 8 tygodni (ostatnie zajęcia 45 minut krócej)
         for block in blocks:
-            lesson = Lesson()
+            lesson = Lesson(groups=[group])
             if "ZJ" not in block[0]:
                 continue
             elif "end." in block:
@@ -221,28 +220,32 @@ class Schedule:
             lesson.name = block[1].split("[")[0].strip()
             lesson.type = strToType(block[1].split("[")[1].split("]")[0].strip())
             # lesson.day = int(block[2].split(",")[0].strip().removeprefix("d").strip())
-            lesson.day = DayOfWeek.fromInt(dayToDayNum(block[2].split(",")[0].strip().removeprefix("d").strip()))
+            lesson.day = DayOfWeek.fromInt(int(block[2].split(",")[0].strip().removeprefix("d").strip()))
             timeStartText = block[2].split(",")[1].split("-")[0].strip()
             lesson.startTime = datetime.strptime(timeStartText, "%H:%M").time()
             timeEndText = block[2].split(",")[1].split("-")[1].strip()
             lesson.endTime = datetime.strptime(timeEndText, "%H:%M").time()
 
-            locationText = block[3].split(",")
-            if len(locationText) >= 2:
-                lesson.location.building = locationText[1].strip()
-            else:
-                lesson.location.building = "34"
-            # lesson.location.floor = int(locationText[0].split("/")[0].strip() or None)
-            # lesson.location.classroom = locationText[0].split("/")[1].strip() or locationText[0].strip()
-            if len(locationText[0].split("/")) >= 2:
-                lesson.location.floor = int(locationText[0].split("/")[0].strip())
-                lesson.location.classroom = locationText[0].split("/")[1].strip()
-            else:
-                lesson.location.classroom = locationText[0].strip()
+            if not "zdaln" in block[3]:
+                lesson.location = Location()
+                # floor/classroom, building
+                locationText = block[3].split(",")
+                if len(locationText) > 1:
+                    lesson.location.building = locationText[1].split("/")[0].strip()
+                else:
+                    lesson.location.building = "34"
 
-            lesson.location.building = block[3].split("/")[0].strip()
-            lesson.lecturer.name = block[4].split(" ")[0].strip()
-            lesson.lecturer.surname = block[4].split(" ")[1].strip()
+                if "/" in locationText[0]:
+                    lesson.location.floor = int(locationText[0].split("/")[0].strip())
+                    lesson.location.classroom = locationText[0].split("/")[1].strip()
+                else:
+                    lesson.location.classroom = locationText[0].strip()
+
+            lecturer = Lecturer()
+            lecturerText = block[4].split(" ")
+            lecturer.name = " ".join(lecturerText[:-1])
+            lecturer.surname = lecturerText[-1].strip()
+            lesson.lecturers = [lecturer]
             lesson.comment = block[5].removeprefix("U:").strip()
 
             # Add lesson to lessons list
@@ -268,4 +271,4 @@ class Schedule:
         }
 
     def __str__(self):
-        return f"Faculty: {self.faculty}\nField: {self.field}\nDegree: {self.degree}\nMode: {self.mode}\nYear: {self.year}\nSemester: {self.semester}\nGroup: {self.group}\nLessons: {self.lessons}"
+        return f"Faculty: {self.faculty}\nField: {self.field}\nDegree: {self.degree}\nMode: {self.mode}\nYear: {self.year}\nSemester: {self.semester}\nLessons: {self.lessons}"
