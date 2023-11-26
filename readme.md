@@ -7,7 +7,7 @@ To łącznik pomiędzy dowolną pocztą elektroniczną z imap a systemem CMS SGG
 3. W pliku `docker-compose.yml` ustaw zmienne środowiskowe:
     - `EMAIL_HOST` - adres serwera imap, domyślnie `imap.gmail.com`
     - `EMAIL_USERNAME` - nazwa użytkownika
-    - `EMAIL_PASSWORD` - hasło użytkownika
+    - `EMAIL_PASSWORD` - hasło użytkownika, dla gmaila należy wygenerować hasło aplikacji
     - `EMAIL_TIMEOUT` - czas pomiędzy sprawdzaniem skrzynki w sekundach, domyślnie `20`
     - `API_URL` - adres API CMS, domyślnie `https://kampus-sggw-api.azurewebsites.net/api`
     - `API_USERNAME` - nazwa użytkownika CMS
