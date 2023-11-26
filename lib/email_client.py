@@ -7,7 +7,7 @@ from models.emailMessage import EmailMessage
 import os
 username= os.environ.get("EMAIL_USERNAME")
 password = os.environ.get("EMAIL_PASSWORD")
-timeout = os.environ.get("TIMEOUT") or 2
+timeout = os.environ.get("TIMEOUT") or 20
 imap_server = os.environ.get("IMAP_SERVER") or "imap.gmail.com"
 
 if username == None or password == None:
@@ -40,7 +40,7 @@ def listenForEmails(execOnNewEmail: Callable[[int], None]):
         except Exception as e:
             print("Stopping due to exception: " + str(e))
             break
-        responses:List[Any] = client.idle_check()
+        responses:List[Any] = client.idle_check(timeout=timeout)
         if responses:
             i: int=0
             while i < len(responses):
