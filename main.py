@@ -28,7 +28,7 @@ def processAttachmentsForNLastestEmail(i: int):
 
     # Check if sender is allowed
     if latestEmail.sender.split("<")[1].strip(">") not in allowedSenders:
-        logger.info("Sender " + latestEmail.sender + "not allowed, skipping...")
+        logger.info("Sender " + latestEmail.sender + " is not allowed, skipping...")
         return
 
     if len(latestEmail.attachments) == 0:
