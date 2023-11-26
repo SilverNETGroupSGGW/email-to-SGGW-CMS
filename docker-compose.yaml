@@ -2,7 +2,7 @@ version: '3'
 services:
   emailListener:
     container_name: Email to SGGW CMS
-    image: thephaseless/email-to-SGGW-CMS
+    image: ghcr.io/thephaseless/email-to-sggw-cms:latest
     environment:
       - EMAIL_HOST=imap.gmail.com
       - EMAIL_USERNAME=
