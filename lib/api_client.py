@@ -18,7 +18,7 @@ session_token: str = os.environ.get("SESSION_TOKEN") or ""
 api_url = os.environ.get("API_URL") or "https://kampus-sggw-api.azurewebsites.net/api"
 
 if session_token == "":
-    email = os.environ.get("API_EMAIL")
+    email = os.environ.get("API_USERNAME")
     password = os.environ.get("API_PASSWORD")
 
     if email == None or password == None:
