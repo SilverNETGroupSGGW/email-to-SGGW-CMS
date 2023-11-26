@@ -8,6 +8,9 @@ services:
       - EMAIL_USERNAME=
       - EMAIL_PASSWORD=
       - EMAIL_TIMEOUT=20
+      - ALLOWED_SENDERS=email@temp.xyz, example@generic.mail
+      # prefix+email_username
+      - EMAIL_PREFIX= # e.g. PLAN
       - API_URL=https://kampus-sggw-api.azurewebsites.net/api
       - API_USERNAME=
       - API_PASSWORD=

@@ -12,6 +12,8 @@ To łącznik pomiędzy dowolną pocztą elektroniczną z imap a systemem CMS SGG
     - `API_URL` - adres API CMS, domyślnie `https://kampus-sggw-api.azurewebsites.net/api`
     - `API_USERNAME` - nazwa użytkownika CMS
     - `API_PASSWORD` - hasło użytkownika CMS
+    - `ALLOWED_SENDERS` - lista adresów email, z których będą akceptowane wiadomości, domyślnie pusta
+    - `EMAIL_PREFIX` - prefix adresu email, domyślnie pusty
 4. Uruchom kontener poleceniem `docker-compose up -d`
 5. Sprawdź czy wszystko działa poleceniem `docker-compose logs -f`
 

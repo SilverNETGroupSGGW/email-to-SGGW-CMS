@@ -8,7 +8,7 @@ def processAttachmentsForNLastestEmail(i: int):
     # Get allowed senders from env
     import os
     allowedSenders = os.environ["ALLOWED_SENDERS"].split(",")
-    email_prefix = os.environ.get("EMAIL_PREFIX") or ""
+    email_prefix = os.environ["EMAIL_PREFIX"] or ""
 
     # Add email prefix if set
     if email_prefix != "":
