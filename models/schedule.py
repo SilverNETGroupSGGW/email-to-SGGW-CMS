@@ -1,3 +1,4 @@
+from enum import Enum
 from io import BytesIO
 from typing import  List # For type hinting
 from datetime import datetime
@@ -25,19 +26,46 @@ def dayToDayNum(day: str):
     else:
         raise Exception("NO_DAY_FOUND")
 
+class Degree(Enum):
+    ENGINEER = "inż"
+    MASTER = "mgr"
+    BACHELOR = "lic"
+
+def strToDegree(string:str):
+    if "inż" in string.lower():
+        return Degree.ENGINEER
+    elif "mgr" in string.lower() or "mag" in string.lower():
+        return Degree.MASTER
+    elif "lic" in string.lower():
+        return Degree.BACHELOR
+    else:
+        raise Exception("NO_DEGREE_FOUND")
+
+class Mode(Enum):
+    STACIONARY = "ST"
+    NONSTACIONARY = "ZO"
+
+def strToMode(string:str):
+    if "st" in string.lower():
+        return Mode.STACIONARY
+    elif "z" in string.lower() and "o" in string.lower():
+        return Mode.NONSTACIONARY
+    else:
+        raise Exception("NO_MODE_FOUND")
+
 class Schedule:
-    def __init__(self, faculty:str="", field:str="", degree:str="", mode:str="", year:int=0, semester:int=0, lessons:List[Lesson]=[]):
+    def __init__(self, faculty:str="", field:str="", degree:Degree=Degree.ENGINEER, mode:Mode = Mode.STACIONARY, year:int=0, semester:int=0, lessons:List[Lesson]=[]):
         self.faculty = faculty
         self.field = field
-        self.degree = degree
-        self.mode = mode
+        self.degree:Degree = degree
+        self.mode:Mode = mode
         self.year = year
         self.semester = semester
         self.groups:List[Group] = []
         self.lessons:List[Lesson] = lessons
 
     def name(self):
-        return self.field + " R" + str(self.year) + "S" + str(self.semester) + " " + self.mode + " " + self.degree
+        return self.field + " R" + str(self.year) + "S" + str(self.semester) + " " + self.mode.name + " " + self.degree.name
 
     @classmethod
     def get_timetables_from_xlsx_data_openpyxl(cls, data: BytesIO):
@@ -51,10 +79,10 @@ class Schedule:
 
             # Get schedule data from first rows
             schedule.field = schedule_data[0].strip()
-            schedule.degree = schedule_data[1].strip()
+            schedule.degree = strToDegree(schedule_data[1].strip())
             schedule.year = schedule_data[2].split("Rok")[1].strip()
             schedule.semester = schedule_data[3].split("Semestr")[1].strip()
-            schedule.mode = "ZO"
+            schedule.mode = Mode.NONSTACIONARY
             schedule.faculty = "WZIM"
 
             time_row:tuple[Cell,...] = ()
@@ -132,6 +160,7 @@ class Schedule:
                     elif "(" in text:
                         lesson.type = strToType(string=text.split("(")[1].split(")")[0].strip())
                     elif "s." in text:
+                        text = text.split("b.")[0].strip()
                         if "/" in text:
                             if lesson.location == None:
                                 lesson.location = Location()
@@ -141,6 +170,8 @@ class Schedule:
                             if lesson.location == None:
                                 lesson.location = Location()
                             lesson.location.classroom = text.split("s.")[1].strip()
+                        if "b." in text:
+                            lesson.location.building = text.split("b.")[1].split("]")[0].strip()
                     elif "b." in text:
                         if lesson.location == None:
                             lesson.location = Location()
@@ -175,6 +206,8 @@ class Schedule:
 
         return plans
 
+
+
     @classmethod
     def get_timetable_from_txt_data(cls, data: List[str]):
         # 10.10.2023 22:34
@@ -185,11 +218,11 @@ class Schedule:
         scheduleInfo = data[1].strip().split(",")
         schedule.faculty = scheduleInfo[0].strip() # WZIM
         schedule.year = scheduleInfo[1].strip() # 2023
-        schedule.mode = scheduleInfo[3].strip() # ST
+        schedule.mode = strToMode(scheduleInfo[3].strip()) # ST
         schedule.field = scheduleInfo[4].strip() # Inf
         if schedule.field == "Inf":
             schedule.field = "Informatyka"
-        schedule.degree = scheduleInfo[5].strip() # inż
+        schedule.degree = strToDegree(scheduleInfo[5].strip()) # inż
         schedule.year = int(scheduleInfo[6].strip().removeprefix("R").strip()) # R4
         schedule.semester = int(scheduleInfo[7].strip().removeprefix("S").strip()) # S7
         group = Group(scheduleInfo[8].strip().removeprefix("gr").strip()) # gr1

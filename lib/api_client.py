@@ -209,7 +209,7 @@ def changePlanData(schedules: List[Schedule]):
         logger.info("")
         logger.info("Updating plan data for")
         logger.info(schedule.name())
-        logger.info("Degree " + schedule.degree)
+        logger.info("Degree " + schedule.degree.name)
 
         # Check if schedule exists
         try:
