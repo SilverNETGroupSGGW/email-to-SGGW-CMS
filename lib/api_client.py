@@ -134,8 +134,8 @@ def getLecturers():
         raise Exception("ERROR_GETTING_LECTURERS")
     return json.loads(r.text)
 
-def changeLecturer(id: str, lecturer: str):
-    lecturerJson = {"name": lecturer}
+def changeLecturer(id: str, lecturer: Lecturer):
+    lecturerJson = lecturer.to_map()
     lecturerJson["id"] = id
     with requests.put(api_url + "/Lecturers", headers=header, json=lecturerJson) as req:
         if req.status_code != 200:
@@ -143,9 +143,12 @@ def changeLecturer(id: str, lecturer: str):
 
 def findLecturerID(lecturer: Lecturer) -> str:
     for lecturerJSON in getLecturers():
-        if lecturerJSON["firstName"] == lecturer.name:
+        if lecturer.name in lecturerJSON["firstName"] and lecturer.surname in lecturerJSON["surname"]:
             return lecturerJSON["id"]
-
+        # If existing name or surname is longer than new one
+        elif lecturerJSON["firstName"] in lecturer.name and lecturerJSON["surname"] in lecturer.surname:
+            changeLecturer(lecturerJSON["id"], lecturer)
+            return lecturerJSON["id"]
     raise Exception("ERROR_FINDING_LECTURER_ID")
 
 def addLecturer(lecturer: Lecturer):
