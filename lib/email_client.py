@@ -36,7 +36,7 @@ def getNLatestEmail(n: int):
     emailMessage = EmailMessage.from_raw_email(raw_email)
     return emailMessage
 
-def listenForEmails(execOnNewEmail: Callable[[int], None]):
+def listenForEmails(execOnNewEmail: Callable[[], None]):
     # Start an IDLE (IMAP IDLE) command - allows the client to listen for changes
     client.idle()
 
@@ -52,7 +52,7 @@ def listenForEmails(execOnNewEmail: Callable[[int], None]):
             logger.info("Got event")
             i: int=0
             while i < len(responses):
-                execOnNewEmail(i)
+                execOnNewEmail()
                 i += 1
     client.idle_done()
 
