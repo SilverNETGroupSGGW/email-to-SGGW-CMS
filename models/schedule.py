@@ -159,19 +159,22 @@ class Schedule:
                         continue
                     elif "(" in text:
                         lesson.type = strToType(string=text.split("(")[1].split(")")[0].strip())
-                    elif "s." in text:
-                        text = text.split("b.")[0].strip()
+                    elif "[" in text:
+                        text = text.split("[")[1].strip()
+                        if lesson.location == None:
+                            lesson.location = Location()
+                        if "]" in text:
+                            lesson.location.building = text.split("b")[1][1:].split("]")[0].strip()
+                            text = text.split("b")[0].strip()
                         if "/" in text:
-                            if lesson.location == None:
-                                lesson.location = Location()
-                            lesson.location.floor = int(text.split("s.")[1].split("/")[0].strip())
-                            lesson.location.classroom = text.split("s.")[1].split("/")[1].strip()
+                            lesson.location.floor = int(text.split("s")[1][1:].split("/")[0].strip())
+                            lesson.location.classroom = text.split("s")[1][1:].split("/")[1].strip()
                         else:
-                            if lesson.location == None:
-                                lesson.location = Location()
-                            lesson.location.classroom = text.split("s.")[1].strip()
-                        if "b." in text:
-                            lesson.location.building = text.split("b.")[1].split("]")[0].strip()
+                            if "s" not in text.lower():
+                                lesson.location.classroom = text.strip().removesuffix(".")
+                            else:
+                                lesson.location.classroom = text.split("s")[1][1:].strip()
+
                     elif "b." in text:
                         if lesson.location == None:
                             lesson.location = Location()
@@ -179,7 +182,7 @@ class Schedule:
                     else:
                         isTeacher = True
                         for word in text.strip().split(" "):
-                            if not word[0].isupper() or any(char.isdigit() for char in word):
+                            if not word[0].isupper() or word[1].isupper() or any(char.isdigit() for char in word):
                                 isTeacher = False
                                 break
                         if isTeacher:
